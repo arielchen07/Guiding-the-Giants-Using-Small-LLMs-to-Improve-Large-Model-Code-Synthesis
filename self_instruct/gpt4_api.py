@@ -27,15 +27,16 @@ def make_requests(
     messages = [
                 {
                     "role": "system",
-                    "content": "You are an intelligent generator for coding problem descriptions."
-                        "Please generate a pair of good code prompt and bad code prompt."
-                        "The good code prompt should clearly describe the coding problem,"
-                        "the bad code prompt is describing the same problem but should be more ambiguious with its problem descriptions hving multiple meanings."
-                        "You can think of the bad code prompt as a question that some non-programmer may ask."
-                        f"You can refer to these as examples: {prompts}"
-                        "You shouldn't response empty and you should generate new pair of good code prompt and bad code prompt."
-                        "Please use the format below: (the output should be json format)\n"
-                        "{'prompt': 'the good code prompt', 'bad_prompt':'the bad code prompt'}"
+                    "content": "You are an intelligent generator for coding problems. "
+                        "Please generate a pair of prompts: one good and one bad code prompt. "
+                        "The good one should clearly describe the coding problem. "
+                        "The bad one should have the same function header and examples, "
+                        "but only differ in docstrings with its problem descriptions being ambiguous and having multiple meanings. "
+                        # "Think of the bad code prompt as a question that a non-programmer might ask. "
+                        f"Refer to these examples: {prompts}. "
+                        "Do not return an empty response. Generate a new pair of good and bad code prompts. "
+                        "Use the following format for the output (in JSON format):\n"
+                        "{'prompt': 'the good code prompt', 'bad_prompt': 'the bad code prompt'}"
                 }
             ]
 
@@ -116,7 +117,7 @@ def parse_args():
     parser.add_argument(
         "--engine",
         type=str,
-        help="The openai GPT3 engine to use.",
+        help="The openai GPT4 engine to use.",
     )
     parser.add_argument(
         "--max_tokens",
