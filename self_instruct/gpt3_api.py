@@ -6,64 +6,99 @@ import openai
 from datetime import datetime
 import argparse
 import time
+
+from openai import OpenAI
     
 
 def make_requests(
         engine, prompts, max_tokens, temperature, top_p, 
-        frequency_penalty, presence_penalty, stop_sequences, logprobs, n, best_of, retries=3, api_key=None, organization=None
+        frequency_penalty, presence_penalty, stop_sequences, logprobs, n, api_key, retries=10, organization=None
     ):
     response = None
     target_length = max_tokens
-    if api_key is not None:
-        openai.api_key = api_key
     if organization is not None:
         openai.organization = organization
+    
+    client = OpenAI(api_key=api_key)
+
     retry_cnt = 0
     backoff_time = 30
+
+    messages = [
+                {
+                    "role": "system",
+                    "content": "You are an intelligent generator for coding problem descriptions."
+                        "Please generate a pair of good code prompt and bad code prompt."
+                        "The good code prompt should clearly describe the coding problem,"
+                        "the bad code prompt is describing the same problem but should be more ambiguious with its problem descriptions hving multiple meanings."
+                        "You can think of the bad code prompt as a question that some non-programmer may ask."
+                        f"You can refer to these as examples: {prompts}"
+                        "You shouldn't response empty and you should generate new pair of good code prompt and bad code prompt."
+                        "Please use the format below: (the output should be json format)\n"
+                        "{'prompt': 'the good code prompt', 'bad_prompt':'the bad code prompt'}"
+                }
+            ]
+
     while retry_cnt <= retries:
         try:
-            response = openai.Completion.create(
-                engine=engine,
-                prompt=prompts,
+            completion = client.chat.completions.create(
+                model=engine,
+                response_format={ "type": "json_object" },
+                messages=messages,
                 max_tokens=target_length,
                 temperature=temperature,
                 top_p=top_p,
                 frequency_penalty=frequency_penalty,
                 presence_penalty=presence_penalty,
+                n=n,
                 stop=stop_sequences,
                 logprobs=logprobs,
-                n=n,
-                best_of=best_of,
+                # best_of=best_of,
             )
-            break
-        except openai.error.OpenAIError as e:
-            print(f"OpenAIError: {e}.")
-            if "Please reduce your prompt" in str(e):
-                target_length = int(target_length * 0.8)
-                print(f"Reducing target length to {target_length}, retrying...")
+            response = completion.choices[0].message.content
+
+            if response:
+                # Parse the response string into a JSON object (dictionary)
+                response_dict = json.loads(response)
+
+                # all_response.append(response_dict)
+
+                # break
+                return [response_dict]
+
             else:
-                print(f"Retrying in {backoff_time} seconds...")
-                time.sleep(backoff_time)
-                backoff_time *= 1.5
+                # count_empty_response += 1
+                print("No response or empty response from OpenAI API")
+                assistant_message = {"role": "assistant", "content": response}
+                user_message = {"role": "user", "content": "The response is empty, please try again:\n" + "please categorize the image into one of the given categories."}
+                messages.append(assistant_message)
+                messages.append(user_message)
+                continue
+            
+        except Exception as e:
+            print(f"Error during OpenAI API call: {e}")
+            print("Wait for a second and ask chatGPT4 again!")
+            time.sleep(1)
             retry_cnt += 1
-    
-    if isinstance(prompts, list):
-        results = []
-        for j, prompt in enumerate(prompts):
-            data = {
-                "prompt": prompt,
-                "response": {"choices": response["choices"][j * n: (j + 1) * n]} if response else None,
-                "created_at": str(datetime.now()),
-            }
-            results.append(data)
-        return results
-    else:
-        data = {
-            "prompt": prompts,
-            "response": response,
-            "created_at": str(datetime.now()),
-        }
-        return [data]
+            continue
+
+    # if isinstance(prompts, list):
+    #     results = []
+    #     for j, prompt in enumerate(prompts):
+    #         data = {
+    #             "prompt": prompt,
+    #             "response": {"choices": choices[j * n: (j + 1) * n]} if choices else None,
+    #             "created_at": str(datetime.now()),
+    #         }
+    #         results.append(data)
+    #     return results
+    # else:
+    #     data = {
+    #         "prompt": prompts,
+    #         "response": response,
+    #         "created_at": str(datetime.now()),
+    #     }
+        # return [data]
 
 
 def parse_args():
@@ -131,11 +166,6 @@ def parse_args():
         help="The `n` parameter of GPT3. The number of responses to generate."
     )
     parser.add_argument(
-        "--best_of",
-        type=int,
-        help="The `best_of` parameter of GPT3. The beam size on the GPT3 server."
-    )
-    parser.add_argument(
         "--use_existing_responses",
         action="store_true",
         help="Whether to use existing responses from the output file if it exists."
@@ -187,7 +217,6 @@ if __name__ == "__main__":
                     stop_sequences=args.stop_sequences,
                     logprobs=args.logprobs,
                     n=args.n,
-                    best_of=args.best_of,
                 )
                 for data in results:
                     fout.write(json.dumps(data) + "\n")
