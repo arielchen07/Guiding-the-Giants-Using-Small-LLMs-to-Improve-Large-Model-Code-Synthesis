@@ -83,24 +83,6 @@ def make_requests(
             retry_cnt += 1
             continue
 
-    # if isinstance(prompts, list):
-    #     results = []
-    #     for j, prompt in enumerate(prompts):
-    #         data = {
-    #             "prompt": prompt,
-    #             "response": {"choices": choices[j * n: (j + 1) * n]} if choices else None,
-    #             "created_at": str(datetime.now()),
-    #         }
-    #         results.append(data)
-    #     return results
-    # else:
-    #     data = {
-    #         "prompt": prompts,
-    #         "response": response,
-    #         "created_at": str(datetime.now()),
-    #     }
-        # return [data]
-
 
 def parse_args():
     parser = argparse.ArgumentParser()

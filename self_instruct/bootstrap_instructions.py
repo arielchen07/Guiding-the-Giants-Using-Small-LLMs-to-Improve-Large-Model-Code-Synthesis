@@ -53,10 +53,6 @@ def find_word_in_string(w, s):
 def post_process_gpt4_response(response):
     if response is None:
         return []
-    # raw_instructions = re.split(r"\n\d+\s?\. ", response)
-    # raw_instructions = response
-    print(f"response: {response}\n")
-    print(f"type(response): {type(response)}\n")
     instructions = []
     for inst in response:
         prompt = inst["prompt"]
@@ -210,25 +206,10 @@ if __name__ == "__main__":
                 api_key=API_KEY,
                 organization=args.organization,
             )
-            print(type(results))
-            print(f"results: {results}\n\n")
 
-            # instructions = []
-            # all_metadata = []
-            # for result in results:
             instructions = post_process_gpt4_response(results)
-            # instructions += new_instructions
-            # all_metadata += [result] * len(new_instructions)
-            # print(f"instructions: {instructions}\n")
-            # instructions = results
-            for inst in instructions:
-                # # Initialize scores to empty lists
-                # prompt_rouge_scores = []
-                # bad_prompt_rouge_scores = []
 
-                print(f"inst: {inst}\n")
-                
-                # # if isinstance(inst, dict) and 'prompt' in inst and 'bad_prompt' in inst:
+            for inst in instructions:
                 prompt_text = inst['prompt']
                 bad_prompt_text = inst['bad_prompt']
                 
@@ -243,9 +224,6 @@ if __name__ == "__main__":
                 # Calculate average scores or use them as needed
                 # prompt_rouge_scores = [score["rougeL"].fmeasure for score in prompt_rouge_scores]
                 bad_prompt_rouge_scores = [score["rougeL"].fmeasure for score in bad_prompt_rouge_scores]
-
-                # # Combine the scores from both prompt and bad_prompt element-wise
-                # combined_rouge_scores = [(score1 + score2) / 2 for score1, score2 in zip(prompt_rouge_scores, bad_prompt_rouge_scores)]
                 
                 # Use the maximum score
                 max_rouge_score = max(bad_prompt_rouge_scores)
@@ -268,6 +246,7 @@ if __name__ == "__main__":
                 # }) + "\n")
 
                 # # Append the instruction and write to file
+                machine_instructions.append(inst)
                 inst_with_score = inst.copy()  # Create a copy of the original dictionary
                 inst_with_score.update({"avg_similarity_score": float(np.mean(bad_prompt_rouge_scores))})
                 fout.write(json.dumps(inst_with_score, indent=4) + "\n")
