@@ -10,7 +10,7 @@ import pandas as pd
 from multiprocessing import Pool
 from functools import partial
 from rouge_score import rouge_scorer
-from gpt3_api import make_requests as make_gpt3_requests
+from gpt4_api import make_requests as make_gpt4_requests
 
 API_KEY = "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"
 
@@ -50,23 +50,28 @@ def find_word_in_string(w, s):
     return re.compile(r'\b({0})\b'.format(w), flags=re.IGNORECASE).search(s)
 
 
-def post_process_gpt3_response(response):
+def post_process_gpt4_response(response):
     if response is None:
         return []
-    # raw_instructions = re.split(r"\n\d+\s?\. ", response)
-    raw_instructions = response
     instructions = []
-    for inst in raw_instructions:
-        inst = re.sub(r"\s+", " ", inst).strip()
-        inst = inst.strip().capitalize()
-        if inst == "":
+    for inst in response:
+        prompt = inst["prompt"]
+        bad_prompt = inst["bad_prompt"]
+
+        prompt = re.sub(r"\s+", " ", prompt).strip()
+        bad_prompt = re.sub(r"\s+", " ", bad_prompt).strip()
+
+        prompt = prompt.strip().capitalize()
+        bad_prompt = bad_prompt.strip().capitalize()
+
+        if prompt == "" or bad_prompt == "":
             continue
         # filter out too short or too long instructions
-        if len(inst.split()) <= 3 or len(inst.split()) > 150:
+        if len(prompt.split()) <= 3 or len(prompt.split()) > 600 or len(bad_prompt.split()) <= 3 or len(bad_prompt.split()) > 600:
             continue
-        # filter based on keywords that are not suitable for language models.
-        if any(find_word_in_string(word, inst) for word in ["image", "images", "graph", "graphs", "picture", "pictures", "file", "files", "map", "maps", "draw", "plot", "go to"]):
-            continue
+        # # filter based on keywords that are not suitable for language models.
+        # if any(find_word_in_string(word, inst) for word in ["image", "images", "graph", "graphs", "picture", "pictures", "file", "files", "map", "maps", "draw", "plot", "go to"]):
+        #     continue
         # We found that the model tends to add "write a program" to some existing instructions, which lead to a lot of such instructions.
         # And it's a bit comfusing whether the model need to write a program or directly output the result. 
         # Here we filter them out.
@@ -74,10 +79,10 @@ def post_process_gpt3_response(response):
         # if inst.startswith("Write a program"):
         #     continue
         # filter those starting with punctuation
-        if inst[0] in string.punctuation:
+        if prompt[0] in string.punctuation or bad_prompt[0] in string.punctuation:
             continue
         # filter those starting with non-english character
-        if not inst[0].isascii():
+        if not prompt[0].isascii() or not bad_prompt[0].isascii():
             continue
         instructions.append(inst)
     return instructions
@@ -89,7 +94,7 @@ def parse_args():
         "--batch_dir",
         type=str,
         required=True,
-        default="data/gpt3_generations/",
+        default="data/gpt4_generations/",
         help="The directory where the batch is stored.",
     )
     parser.add_argument(
@@ -102,8 +107,8 @@ def parse_args():
     parser.add_argument(
         "--num_instructions_to_generate",
         type=int,
-        default=100,
-        help="th",
+        default=1,
+        help="the number of instructions to generate",
     )
     parser.add_argument(
         "--use_clf_seed_tasks_only",
@@ -113,7 +118,7 @@ def parse_args():
     parser.add_argument(
         "--engine",
         type=str,
-        default="davinci",
+        default="gpt-4o-mini",
         help="The engine to use."
     )
     parser.add_argument(
@@ -126,7 +131,7 @@ def parse_args():
         "--request_batch_size",
         type=int,
         default=5,
-        help="The number of requests to send to GPT3 at a time."
+        help="The number of requests to send to GPT4 at a time."
     )
     parser.add_argument(
         "--api_key",
@@ -155,8 +160,8 @@ if __name__ == "__main__":
     request_idx = 0
     # load the LM-generated instructions
     machine_instructions = []
-    if os.path.exists(os.path.join(args.batch_dir, "machine_generated_instructions.jsonl")):
-        with open(os.path.join(args.batch_dir, "machine_generated_instructions.jsonl"), "r") as fin:
+    if os.path.exists(os.path.join(args.batch_dir, "generated_prompts.jsonl")):
+        with open(os.path.join(args.batch_dir, "generated_prompts.jsonl"), "r") as fin:
             for line in fin:
                 instruction_info = json.loads(line)
                 machine_instructions.append(instruction_info["instruction"])
@@ -171,7 +176,7 @@ if __name__ == "__main__":
     if machine_instructions:
         progress_bar.update(len(machine_instructions))
 
-    with open(os.path.join(args.batch_dir, "machine_generated_instructions.json"), "a") as fout:
+    with open(os.path.join(args.batch_dir, "generated_prompts.json"), "a") as fout:
         while len(machine_instructions) < args.num_instructions_to_generate:
             batch_inputs = []
             for _ in range(args.request_batch_size):
@@ -186,7 +191,7 @@ if __name__ == "__main__":
                 prompt = encode_prompt(prompt_instructions, classification=args.use_clf_seed_tasks_only)
                 batch_inputs.append(prompt)
 
-            results = make_gpt3_requests(
+            results = make_gpt4_requests(
                 engine=args.engine,
                 prompts=batch_inputs,
                 max_tokens=1024,
@@ -201,58 +206,38 @@ if __name__ == "__main__":
                 api_key=API_KEY,
                 organization=args.organization,
             )
-            print(type(results))
-            print(f"results: {results}\n\n")
 
-            # instructions = []
-            # all_metadata = []
-            # for result in results:
-            #     new_instructions = post_process_gpt3_response(result["response"])
-            #     instructions += new_instructions
-                # all_metadata += [result] * len(new_instructions)
-            # print(f"instructions: {instructions}\n")
-            instructions = results
+            instructions = post_process_gpt4_response(results)
+
             for inst in instructions:
-                # # Initialize scores to empty lists
-                # prompt_rouge_scores = []
-                # bad_prompt_rouge_scores = []
-
-                print(f"inst: {inst}\n")
+                prompt_text = inst['prompt']
+                bad_prompt_text = inst['bad_prompt']
                 
-                # # if isinstance(inst, dict) and 'prompt' in inst and 'bad_prompt' in inst:
-                # prompt_text = inst['prompt']
-                # bad_prompt_text = inst['bad_prompt']
+                # Extract the 'bad_prompt' text from each instruction for scoring
+                seed_prompts = [instr['bad_prompt'] for instr in seed_instructions if 'bad_prompt' in instr]
+                machine_prompts = [instr['bad_prompt'] for instr in machine_instructions if 'bad_prompt' in instr]
                 
-                # # Extract the 'prompt' text from each instruction for scoring
-                # seed_prompts = [instr['prompt'] for instr in seed_instructions if 'prompt' in instr]
-                # machine_prompts = [instr['prompt'] for instr in machine_instructions if 'prompt' in instr]
+                with Pool(4) as p:
+                    # prompt_rouge_scores = p.map(partial(scorer.score, prompt_text), seed_prompts + machine_prompts)
+                    bad_prompt_rouge_scores = p.map(partial(scorer.score, bad_prompt_text), seed_prompts + machine_prompts)
                 
-                # with Pool(4) as p:
-                #     prompt_rouge_scores = p.map(partial(scorer.score, prompt_text), seed_prompts + machine_prompts)
-                #     bad_prompt_rouge_scores = p.map(partial(scorer.score, bad_prompt_text), seed_prompts + machine_prompts)
-                
-                # # Calculate average scores or use them as needed
+                # Calculate average scores or use them as needed
                 # prompt_rouge_scores = [score["rougeL"].fmeasure for score in prompt_rouge_scores]
-                # bad_prompt_rouge_scores = [score["rougeL"].fmeasure for score in bad_prompt_rouge_scores]
-
-                # # Combine the scores from both prompt and bad_prompt element-wise
-                # combined_rouge_scores = [(score1 + score2) / 2 for score1, score2 in zip(prompt_rouge_scores, bad_prompt_rouge_scores)]
+                bad_prompt_rouge_scores = [score["rougeL"].fmeasure for score in bad_prompt_rouge_scores]
                 
-                # # Example: Use the maximum score from either prompt or bad_prompt
-                # max_rouge_score = max(combined_rouge_scores)
+                # Use the maximum score
+                max_rouge_score = max(bad_prompt_rouge_scores)
                 
-                # if max_rouge_score > 0.7:
-                #     continue
+                if max_rouge_score > 0.7:
+                    continue
                 
-                # all_instructions = seed_instructions + machine_instructions
+                all_instructions = seed_instructions + machine_instructions
                 
-                # # Calculate the most similar instructions using combined scores
+                # # Calculate the most similar instructions using bad_prompt_rouge_scores
                 # most_similar_instructions = {
-                #     json.dumps(all_instructions[i]): combined_rouge_scores[i] for i in np.argsort(combined_rouge_scores)[-10:][::-1]
-                # }
-                
-                # # Append the instruction and write to file
-                # machine_instructions.append(inst)
+                #         all_instructions[i] : bad_prompt_rouge_scores[i] for i in np.argsort(bad_prompt_rouge_scores)[-10:][::-1]
+                #     }
+
                 # fout.write(json.dumps({
                 #     "instruction": inst,
                 #     "most_similar": most_similar_instructions,
@@ -262,6 +247,8 @@ if __name__ == "__main__":
 
                 # # Append the instruction and write to file
                 machine_instructions.append(inst)
-                fout.write(json.dumps(inst, indent=4) + "\n")
+                inst_with_score = inst.copy()  # Create a copy of the original dictionary
+                inst_with_score.update({"avg_similarity_score": float(np.mean(bad_prompt_rouge_scores))})
+                fout.write(json.dumps(inst_with_score, indent=4) + "\n")
                 progress_bar.update(1)
             request_idx += 1

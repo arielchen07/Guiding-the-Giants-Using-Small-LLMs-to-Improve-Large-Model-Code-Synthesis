@@ -6,7 +6,7 @@ import re
 import argparse
 import pandas as pd
 from collections import OrderedDict
-from gpt3_api import make_requests as make_gpt3_requests
+from CS224n.self_instruct.gpt4_api import make_requests as make_gpt4_requests
 from templates.instance_gen_template import output_first_template_for_clf, input_first_template_for_gen
 
 
@@ -138,7 +138,7 @@ if __name__ == '__main__':
                     else:
                         prompt = input_first_template_for_gen + " " + task["instruction"].strip() + "\n"
                         prompts.append(prompt)
-                results = make_gpt3_requests(
+                results = make_gpt4_requests(
                     engine=args.engine,
                     prompts=prompts,
                     # because the clf template is longer, we need to decrease the max_tokens

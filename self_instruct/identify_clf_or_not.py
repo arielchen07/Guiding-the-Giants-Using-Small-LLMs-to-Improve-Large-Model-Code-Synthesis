@@ -6,7 +6,7 @@ import re
 import argparse
 import pandas as pd
 from collections import OrderedDict
-from gpt3_api import make_requests as make_gpt3_requests
+from CS224n.self_instruct.gpt4_api import make_requests as make_gpt4_requests
 from templates.clf_task_template import template_1
 
 
@@ -98,7 +98,7 @@ if __name__ == '__main__':
                 # prefix = compose_prompt_prefix(human_written_tasks, batch[0]["instruction"], 8, 2)
                 prefix = templates[args.template]
                 prompts = [prefix + " " + d["instruction"].strip() + "\n" + "Is it classification?" for d in batch]
-                results = make_gpt3_requests(
+                results = make_gpt4_requests(
                     engine=args.engine,
                     prompts=prompts,
                     max_tokens=3,
