@@ -1,12 +1,27 @@
-import json
+
+
 import ast
 import operator
 import math
+import signal
+import json
 from typing import List, Dict
+from tqdm import tqdm
 
-with open("../data/human_eval_data_ambiguity_with_soln_new.json", "r") as f:
+# Define timeout exception
+class TimeoutException(Exception):
+    pass
+
+def timeout_handler(signum, frame):
+    raise TimeoutException("Function execution timed out.")
+
+
+# with open("../data/human_eval_data_ambiguity_with_soln_new.json", "r") as f:
+#     data = json.load(f)
+    
+with open("../codellama/combined_code_llama_good.json", "r") as f:
     data = json.load(f)
-
+    
 OPERATORS = {
     "==": operator.eq,
     "!=": operator.ne,
@@ -55,10 +70,9 @@ def run_tests(solution_code: str, function_name: str, tests: List[Dict], prompt:
         raise ValueError(f"Function {function_name} not found.")
 
     is_binary = "bitwise" in prompt.lower() or "binary" in prompt.lower()
-    
-        
 
     results = []
+    errored = False
     for test in tests:
         input_str = test["input"]
         expected_str = test["output"]
@@ -73,7 +87,13 @@ def run_tests(solution_code: str, function_name: str, tests: List[Dict], prompt:
             expected = safe_eval(expected_str, is_binary)
 
             args = (parsed_input,) if not isinstance(parsed_input, tuple) else parsed_input
+            signal.signal(signal.SIGALRM, timeout_handler)
+            signal.alarm(10)
 
+            result = func(*args)
+
+            signal.alarm(0)
+            
             result = func(*args)
             if isinstance(result, str) and isinstance(expected, int):
                 if is_binary:
@@ -105,13 +125,18 @@ def run_tests(solution_code: str, function_name: str, tests: List[Dict], prompt:
                 except SyntaxError as e:
                     print(f"Syntax error in relation evaluation: {e}")
                     passed = False
+            if not passed:
+                print("funcname", function_name)
+                print("result", result)
+                print("expected", expected)
             results.append(passed)
 
         except Exception as e:
             print(f"[ERROR] {function_name} failed on input={input_str!r}: {e}")
             results.append(False)
+            errored = True 
 
-    return results
+    return results, errored
 
 
 def get_main_function_name(prompt: str) -> str:
@@ -121,37 +146,52 @@ def get_main_function_name(prompt: str) -> str:
 
 def evaluate_all():
     summary = {}
-    counter = 0 
+    correct_programs = 0  
+    errored_programs = 0 
+    wrong_output_programs = 0  
     
-    for entry in data:
+    for entry in tqdm(data):
         try:
             func_name = get_main_function_name(entry["prompt"])
             solution = entry["solution"]
             tests = ast.literal_eval(entry["tests"])
 
-            test_results = run_tests(solution, func_name, tests, entry["prompt"])
+            test_results, errored = run_tests(solution, func_name, tests, entry["prompt"])
+            passed_tests = sum(test_results)
+            failed_tests = len(test_results) - passed_tests
+            
             summary[func_name] = {
                 "total": len(test_results),
-                "passed": sum(test_results),
-                "failed": len(test_results) - sum(test_results)
+                "passed": passed_tests,
+                "failed": failed_tests,
+                "errored": errored 
             }
-            if len(test_results) - sum(test_results) ==0 and sum(test_results)!=0:
-                counter+=1
-            else:
-                print(len(test_results) - sum(test_results))
-                print(func_name)
+            
+            if passed_tests == len(test_results) and len(test_results) != 0:
+                correct_programs += 1
+            elif errored:  
+                errored_programs += 1
+            else:  
+                wrong_output_programs += 1
                 
         except Exception as e:
             print(f"Error evaluating {entry.get('prompt', '')[:20]}...: {e}")
-    success_rate = counter/len(data)
-    # print(counter)
-    # print(len(data))
+            errored_programs+=1
+    total_programs = correct_programs + errored_programs + wrong_output_programs 
+    success_rate = correct_programs / (total_programs + 1)
+    summary["correct_programs"] = correct_programs  
+    summary["errored_programs"] = errored_programs  
+    summary["wrong_output_programs"] = wrong_output_programs 
+    summary["total_programs"] = total_programs  
     summary["success_rate"] = success_rate
+    
     return summary
 
 
 if __name__ == "__main__":
     results = evaluate_all()
     print("pass @ 1: ", results["success_rate"])
-    # for func, stats in results.items():
-    #     print(func,stats)
+    print("Total programs:", results["total_programs"])  
+    print("Correct programs:", results["correct_programs"]) 
+    print("Errored programs:", results["errored_programs"])  
+    print("Wrong output programs:", results["wrong_output_programs"])  
