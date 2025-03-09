@@ -116,9 +116,9 @@ if __name__ == "__main__":
 
     dataset = Dataset.from_list(formatted_data)
     processed_dataset = dataset.map(
-        lambda x: {"text": tokenizer.apply_chat_template(
-            x["messages"], tokenize=False, add_generation_prompt=False
-        )},
+        lambda x: tokenizer.apply_chat_template(
+            x["messages"], tokenize=True, add_generation_prompt=False, padding=True, return_dict=True
+        ),
         remove_columns=["messages"],
         desc="Applying chat template",
     )
