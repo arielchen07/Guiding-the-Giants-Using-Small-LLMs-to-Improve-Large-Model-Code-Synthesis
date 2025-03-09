@@ -73,6 +73,28 @@ def setup_model_and_tokenizer(config):
     
     return model, tokenizer
 
+def data_preprocessing(data):
+    formatted_data = []
+    for item in data:
+        formatted_data.append({
+            "messages": [
+                {"role": "system", "content": "You are a helpful AI assistant that refines ambiguous prompts for code generation. Please make the following input prompt more specific and unambiguous. Please only refine the prompt, do not try to generate the actual code solution."},
+                {"role": "user", "content": f"Your input prompt is: {item['bad_prompt']}"},
+                {"role": "assistant", "content": item["prompt"]},
+            ]
+        })
+    
+    dataset = Dataset.from_list(formatted_data)
+    processed_dataset = dataset.map(
+        lambda x: tokenizer.apply_chat_template(
+            x["messages"], tokenize=True, add_generation_prompt=False, padding=True, return_dict=True
+        ),
+        remove_columns=["messages"],
+        desc="Applying chat template",
+    )
+    
+    return processed_dataset
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", type=str, required=True, help="Path to config file")
@@ -104,24 +126,7 @@ if __name__ == "__main__":
 
     # Load and process data
     data = json.load(open(args.data_path))
-    formatted_data = []
-    for item in data:
-        formatted_data.append({
-            "messages": [
-                {"role": "system", "content": "You are a helpful AI assistant that refines ambiguous prompts."},
-                {"role": "user", "content": f"Make this prompt detailed and unambiguous: {item['bad_prompt']}"},
-                {"role": "assistant", "content": item["prompt"]},
-            ]
-        })
-
-    dataset = Dataset.from_list(formatted_data)
-    processed_dataset = dataset.map(
-        lambda x: tokenizer.apply_chat_template(
-            x["messages"], tokenize=True, add_generation_prompt=False, padding=True, return_dict=True
-        ),
-        remove_columns=["messages"],
-        desc="Applying chat template",
-    )
+    processed_dataset = data_preprocessing(data)
 
     # Initialize trainer
     trainer = SFTTrainer(
