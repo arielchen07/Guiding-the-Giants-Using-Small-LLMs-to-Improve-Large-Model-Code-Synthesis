@@ -5,6 +5,10 @@ model:
     trust_remote_code: true
     attn_implementation: "eager"
     torch_dtype: "bfloat16"
+  tokenizer:
+    pad_token: "<|finetune_right_pad_id|>"
+    padding_side: "right"
+    max_length: 2048
 
 training:
   # hyperparameters to tune

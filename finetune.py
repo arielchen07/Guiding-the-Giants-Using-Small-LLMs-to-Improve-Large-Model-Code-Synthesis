@@ -50,10 +50,26 @@ def setup_model_and_tokenizer(config):
         **model_kwargs
     )
     tokenizer = AutoTokenizer.from_pretrained(config["model"]["path"])
-    tokenizer.model_max_length = 2048
-    if tokenizer.pad_token is None:
-        tokenizer.pad_token = tokenizer.eos_token
-    tokenizer.padding_side = 'right'
+
+    # Apply tokenizer settings from config
+    tokenizer_config = config["model"].get("tokenizer", {})
+    
+    # Set custom pad token if specified
+    if "pad_token" in tokenizer_config:
+        tokenizer.add_special_tokens({"pad_token": tokenizer_config["pad_token"]})
+        # Model needs to resize embeddings as we added a new token
+        model.resize_token_embeddings(len(tokenizer))
+
+        # verify pad token and ID
+        # print(f"Pad token: {tokenizer.pad_token}")
+        # print(f"Pad token ID: {tokenizer.pad_token_id}")
+    
+    tokenizer.model_max_length = tokenizer_config.get("max_length", 2048)
+    tokenizer.padding_side = tokenizer_config.get("padding_side", "right")
+
+    # tokenizer.pad_token = tokenizer.unk_token  
+    # tokenizer.pad_token_id = tokenizer.convert_tokens_to_ids(tokenizer.pad_token)
+
     
     return model, tokenizer
 
