@@ -78,7 +78,7 @@ def data_preprocessing(data):
     for item in data:
         formatted_data.append({
             "messages": [
-                {"role": "system", "content": "You are a helpful AI assistant that refines ambiguous prompts for code generation. Please make the following input prompt more specific and unambiguous. Please only refine the prompt, do not try to generate the actual code solution."},
+                {"role": "system", "content": "You are a helpful AI assistant that refines ambiguous prompts for Python code generation. Please make the following input prompt more specific and unambiguous. Please only refine the prompt, do not try to generate the actual code solution or any explanation to your output."},
                 {"role": "user", "content": f"Your input prompt is: {item['bad_prompt']}"},
                 {"role": "assistant", "content": item["prompt"]},
             ]
