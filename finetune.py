@@ -134,10 +134,30 @@ if __name__ == "__main__":
 
     # Train and save
     train_result = trainer.train()
-    trainer.save_model(train_conf.output_dir)
     
-    # Log metrics
-    metrics = train_result.metrics
-    trainer.log_metrics("train", metrics)
-    trainer.save_metrics("train", metrics)
-    trainer.save_state()
+    # # Log metrics
+    # metrics = train_result.metrics
+    # trainer.log_metrics("train", metrics)
+    # trainer.save_metrics("train", metrics)
+    # trainer.save_state()
+
+    messages = [                    
+    {"role": "user", "content": f"Make this prompt detailed and unambiguous: {data[0]['bad_prompt']}"},
+    ]
+
+    input_ids = tokenizer.apply_chat_template(
+        messages,
+        add_generation_prompt = True,
+        return_tensors = "pt",
+    ).to("cuda")
+
+    # model is LlamaForCausalLM
+    # from transformers import TextStreamer
+    # text_streamer = TextStreamer(tokenizer, skip_prompt = True)
+    # _ = model.generate(input_ids, streamer = text_streamer, max_new_tokens = 128, pad_token_id = tokenizer.eos_token_id)
+    generate_ids = model.generate(input_ids, max_new_tokens = 500, pad_token_id = tokenizer.pad_token_id, attention_mask=torch.ones_like(input_ids))
+    
+    output = tokenizer.batch_decode(generate_ids, skip_special_tokens=True, clean_up_tokenization_spaces=False)[0]
+    json.dump({"prompt": data[0]["bad_prompt"], "output": output}, open("output.json", "w"))
+
+
