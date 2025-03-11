@@ -31,7 +31,7 @@ def data_preprocessing(data):
     formatted_data = []
     for item in data:
         formatted_data.append([                    
-            {"role": "user", "content": f"Refine this ambiguous prompt for Python code generation to be more specific and unambiguous: {item['bad_prompt']}. Please only refine the prompt, do not try to generate the actual code solution or any explanation to your output."}
+            {"role": "user", "content": f"Refine this ambiguous prompt for Python code generation to be more specific and unambiguous, do not try to generate the actual code solution or any explanation to your output: {item['bad_prompt']}."}
         ])
     
     return formatted_data
@@ -91,12 +91,11 @@ if __name__ == "__main__":
             # assistant_response = generated_conversation[1]['content']
             generated_text = result[0]['generated_text']
             print(generated_text)
-            assistant_response = generated_text.split("Here's a refined version of the prompt:")[-1].strip()
             
             outputs.append({
                 "index": idx,
                 "original_prompt": data[idx]["bad_prompt"],
-                "refined_prompt": assistant_response
+                "refined_prompt": generated_text
             })
 
         with open("output.json", "w") as f:

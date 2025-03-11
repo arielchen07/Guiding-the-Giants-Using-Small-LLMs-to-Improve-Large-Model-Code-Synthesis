@@ -14,6 +14,7 @@ training:
   # hyperparameters to tune
   learning_rate: 5.0e-06
   num_train_epochs: 2
+  logging_steps: 20
   per_device_train_batch_size: 1
   gradient_accumulation_steps: 1
   warmup_ratio: 0.2
@@ -21,23 +22,26 @@ training:
   lr_scheduler_type: "cosine"
   
   # Output and checkpointing
-  output_dir: "./checkpoints/llama_3b"
-  save_steps: 100
-  save_total_limit: 1
-  logging_steps: 20
+  output_dir:  "./checkpoints/llama_3b"
+  save_steps: 500 
+  save_total_limit: 20
+  # remove later
+  do_eval: True  
+  evaluation_strategy: "steps"  
+  eval_steps: 500
 
 peft:
   # LoRA hyperparameters
-  r: 4
+  r: 16
   lora_alpha: 32
   lora_dropout: 0.05
   target_modules: "all-linear" 
 
 inference_checkpoint: 
-  path: "./checkpoints/llama_3b/checkpoint-4"
+  path: "./checkpoints/llama_3b/checkpoint-8000"
 
 inference:
-  max_new_tokens: 500
+  max_new_tokens: 2048
   return_full_text: false
   temperature: 0.0
   do_sample: false
