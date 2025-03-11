@@ -32,3 +32,11 @@ peft:
   lora_alpha: 32
   lora_dropout: 0.05
   target_modules: "all-linear" 
+
+inference:
+  max_new_tokens: 500
+  return_full_text: false
+  temperature: 0.0
+  do_sample: false
+  # top_p: 0.9
+  # top_k: 0
