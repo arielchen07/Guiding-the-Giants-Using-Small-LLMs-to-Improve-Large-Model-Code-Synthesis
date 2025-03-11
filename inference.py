@@ -8,7 +8,7 @@ from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline
 from transformers.pipelines.pt_utils import KeyDataset
 import datasets
 from datasets import Dataset
-
+import os
 def load_config(config_path):
     with open(config_path, 'r') as f:
         config = yaml.safe_load(f)
@@ -23,8 +23,7 @@ def data_preprocessing(data):
     formatted_data = []
     for item in data:
         formatted_data.append([                    
-            {"role": "user", "content": f"Refine this ambiguous prompt for Python code generation to be more specific and unambiguous: {item['bad_prompt']}. 
-             Please only refine the prompt, do not try to generate the actual code solution or any explanation to your output."}
+            {"role": "user", "content": f"Refine this ambiguous prompt for Python code generation to be more specific and unambiguous: {item['bad_prompt']}. Please only refine the prompt, do not try to generate the actual code solution or any explanation to your output."}
         ])
     
     return formatted_data
@@ -40,16 +39,23 @@ if __name__ == "__main__":
     config = load_config(args.config)
 
     model_path = config["model"]["path"]
-    finetuned_model_path = config["training"]["output_dir"]
-
+    finetuned_model_path = config["inference_checkpoint"]["path"]
+    # Create offload directory if it doesn't exist
+    os.makedirs("offload", exist_ok=True)
+    
     # merge the base model with the fined-tuned one
-    base_model = AutoModelForCausalLM.from_pretrained(model_path, device_map='auto', trust_remote_code=True)
+    base_model = AutoModelForCausalLM.from_pretrained(
+        model_path,
+        device_map="auto",
+        trust_remote_code=True,
+        offload_folder="offload"
+    )
     model = PeftModel.from_pretrained(base_model, finetuned_model_path)
     model = model.merge_and_unload()
 
     tokenizer = AutoTokenizer.from_pretrained(model_path, device_map='auto', trust_remote_code=True)
-    tokenizer.pad_token = config["tokenizer"]["pad_token"]
-    tokenizer.padding_side = config["tokenizer"]["padding_side"]
+    tokenizer.pad_token = config["model"]["tokenizer"]["pad_token"]
+    tokenizer.padding_side = config["model"]["tokenizer"]["padding_side"]
 
     inference_config = config["inference"]
 
@@ -66,8 +72,13 @@ if __name__ == "__main__":
     for idx, item in enumerate(tqdm(processed_data)):
         result = generator(item)
         # Parse the generated text to get just the assistant's response
-        generated_conversation = json.loads(result[0]['generated_text'])
-        assistant_response = generated_conversation[1]['content']
+        # generated_conversation = json.loads(result[0]['generated_text'])
+        # assistant_response = generated_conversation[1]['content']
+        # The generated text is the direct response from the model
+        generated_text = result[0]['generated_text']
+        print(generated_text)
+        # Extract just the assistant's response by removing the user's prompt
+        assistant_response = generated_text.split("Here's a refined version of the prompt:")[-1].strip()
         
         outputs.append({
             "index": idx,

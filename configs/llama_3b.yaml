@@ -33,6 +33,9 @@ peft:
   lora_dropout: 0.05
   target_modules: "all-linear" 
 
+inference_checkpoint: 
+  path: "./checkpoints/llama_3b/checkpoint-4"
+
 inference:
   max_new_tokens: 500
   return_full_text: false
