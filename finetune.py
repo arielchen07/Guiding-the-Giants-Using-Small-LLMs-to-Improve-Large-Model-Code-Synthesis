@@ -59,7 +59,9 @@ def setup_model_and_tokenizer(config):
         tokenizer.add_special_tokens({"pad_token": tokenizer_config["pad_token"]})
         # Model needs to resize embeddings as we added a new token
         model.resize_token_embeddings(len(tokenizer))
-
+    else:
+        tokenizer.pad_token=tokenizer.unk_token
+        tokenizer.pad_token_id = tokenizer.convert_tokens_to_ids(tokenizer.pad_token)
         # verify pad token and ID
         # print(f"Pad token: {tokenizer.pad_token}")
         # print(f"Pad token ID: {tokenizer.pad_token_id}")
