@@ -1,0 +1,19 @@
+model:
+  path: "codellama/CodeLlama-34b-Instruct-hf"
+  kwargs:
+    use_cache: false
+    trust_remote_code: true
+    attn_implementation: "eager"
+    torch_dtype: "bfloat16"
+  tokenizer:
+    pad_token: "<pad>"
+    padding_side: "right"
+    max_length: 2048
+
+inference:
+  max_new_tokens: 1024
+  return_full_text: false
+  temperature: 0.0
+  do_sample: false
+  # top_p: 0.9
+  # top_k: 0
