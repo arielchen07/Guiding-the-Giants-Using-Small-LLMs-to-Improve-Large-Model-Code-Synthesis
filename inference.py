@@ -69,7 +69,8 @@ if __name__ == "__main__":
         model = model.merge_and_unload()
 
         tokenizer = AutoTokenizer.from_pretrained(model_path, device_map='auto', trust_remote_code=True)
-        tokenizer.pad_token = config["model"]["tokenizer"]["pad_token"]
+        if "pad_token" in config["model"].get("tokenizer", {}):
+            tokenizer.pad_token = config["model"]["tokenizer"]["pad_token"]
         tokenizer.padding_side = config["model"]["tokenizer"]["padding_side"]
 
         inference_config = config["inference"]
