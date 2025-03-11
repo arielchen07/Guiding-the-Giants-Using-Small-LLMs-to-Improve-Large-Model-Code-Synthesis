@@ -73,7 +73,7 @@ def setup_model_and_tokenizer(config):
     
     return model, tokenizer
 
-def data_preprocessing(data):
+def data_preprocessing(data,tokenizer):
     formatted_data = []
     for item in data:
         formatted_data.append({
@@ -85,15 +85,28 @@ def data_preprocessing(data):
         })
     
     dataset = Dataset.from_list(formatted_data)
-    processed_dataset = dataset.map(
+    dataset = dataset.shuffle(seed=1)
+    split_dataset = dataset.train_test_split(test_size=0.1)
+    train_dataset = split_dataset["train"]
+    eval_dataset = split_dataset["test"]
+    
+    train_dataset = train_dataset.map(
         lambda x: tokenizer.apply_chat_template(
             x["messages"], tokenize=True, add_generation_prompt=False, padding=True, return_dict=True
         ),
         remove_columns=["messages"],
-        desc="Applying chat template",
+        desc="Applying chat template to train set",
     )
+    eval_dataset = eval_dataset.map(
+        lambda x: tokenizer.apply_chat_template(
+            x["messages"], tokenize=True, add_generation_prompt=False, padding=True, return_dict=True
+        ),
+        remove_columns=["messages"],
+        desc="Applying chat template to eval set",
+    )
+
     
-    return processed_dataset
+    return train_dataset, eval_dataset
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -126,14 +139,15 @@ if __name__ == "__main__":
 
     # Load and process data
     data = json.load(open(args.data_path))
-    processed_dataset = data_preprocessing(data)
+    train_dataset, eval_dataset = data_preprocessing(data,tokenizer)
 
     # Initialize trainer
     trainer = SFTTrainer(
         model=model,
         args=train_conf,
         peft_config=peft_conf,
-        train_dataset=processed_dataset,
+        train_dataset=train_dataset, 
+        eval_dataset = eval_dataset, 
         tokenizer=tokenizer,
     )
 
@@ -146,3 +160,6 @@ if __name__ == "__main__":
     trainer.log_metrics("train", metrics)
     trainer.save_metrics("train", metrics)
     trainer.save_state()
+    eval_metrics = trainer.evaluate()
+    trainer.log_metrics("eval", eval_metrics)
+    trainer.save_metrics("eval", eval_metrics)
