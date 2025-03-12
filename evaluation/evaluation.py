@@ -16,10 +16,8 @@ def timeout_handler(signum, frame):
     raise TimeoutException("Function execution timed out.")
 
 
-# with open("../data/human_eval_data_ambiguity_with_soln_new.json", "r") as f:
-#     data = json.load(f)
     
-with open("../codellama/combined_code_llama_removed_weird_input.json", "r") as f:
+with open("codellama_output.json", "r") as f:
     data = json.load(f)
     
 OPERATORS = {
@@ -125,10 +123,10 @@ def run_tests(solution_code: str, function_name: str, tests: List[Dict], prompt:
                 except SyntaxError as e:
                     print(f"Syntax error in relation evaluation: {e}")
                     passed = False
-            if not passed:
-                print("funcname", function_name)
-                print("result", result)
-                print("expected", expected)
+            # if not passed:
+            #     print("funcname", function_name)
+            #     print("result", result)
+            #     print("expected", expected)
             results.append(passed)
 
         except Exception as e:
@@ -140,9 +138,6 @@ def run_tests(solution_code: str, function_name: str, tests: List[Dict], prompt:
 
 
 def get_main_function_name(prompt: str, solution_code: str) -> str:
-    # tree = ast.parse(prompt)
-    # funcs = [n.name for n in ast.walk(tree) if isinstance(n, ast.FunctionDef)]
-    # return funcs[-1] if funcs else None
 
     prompt_tree = ast.parse(prompt)
     prompt_funcs = [n.name for n in ast.walk(prompt_tree) if isinstance(n, ast.FunctionDef)]
@@ -151,9 +146,10 @@ def get_main_function_name(prompt: str, solution_code: str) -> str:
     solution_funcs = [n.name for n in ast.walk(solution_tree) if isinstance(n, ast.FunctionDef)]
 
     if len(solution_funcs) == 1:
-        return solution_funcs[0]  
-    
-    return prompt_funcs[-1] if prompt_funcs else None 
+        return solution_funcs[0]
+    else:
+        return prompt_funcs[-1]
+
 
 def evaluate_all():
     summary = {}
@@ -163,11 +159,11 @@ def evaluate_all():
     
     for entry in tqdm(data):
         try:
-            func_name = get_main_function_name(entry["prompt"], entry["solution"])
+            func_name = get_main_function_name(entry["llm_prompt_filtered"].strip(" "), entry["solution"])
             solution = entry["solution"]
             tests = ast.literal_eval(entry["tests"])
 
-            test_results, errored = run_tests(solution, func_name, tests, entry["prompt"])
+            test_results, errored = run_tests(solution, func_name, tests, entry["llm_prompt_filtered"].strip(" "))
             passed_tests = sum(test_results)
             failed_tests = len(test_results) - passed_tests
             
