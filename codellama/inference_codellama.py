@@ -8,32 +8,23 @@ API_URL = f"https://api-inference.huggingface.co/models/{model}"
 access_token = TODO
 headers = {"Authorization": f"Bearer {access_token}"}
 
-with open("../data/human_eval_data_ambiguity_with_soln_new.json", "r") as file:
-	inputs = json.load(file)
-
- # delete this to use all examples
-# inputs = inputs[:2]
+inputs = json.load(open("./output.json"))
 responses = []
+
+original = json.load(open("./data/human_eval_data_ambiguity_with_soln_new.json"))
 
 prompt_prefix = "Complete the function, do not add a main method and do not return empty function body and do not pass"
 for i in tqdm(range(len(inputs))):
 	input = inputs[i]
-	# print(f"{input["prompt"]=}\n")
-	payload = {"inputs":prompt_prefix + " "+ input["prompt"]}
+	payload = {"inputs":prompt_prefix + " "+ input["refined_prompt"]}
 	response = requests.post(API_URL, headers=headers, json=payload)
 	response = response.json()[0]
-	response["generated_text"] = response["generated_text"].replace(prompt_prefix, "")
-	response["index"] = i 
-	responses.append(response)
-	if i % 10 ==0:
-		responses_json = json.dumps(responses, indent=4)
-		with open(f"output_good.json", "w") as file:
-			file.write(responses_json)
-	
+	response["generated_text"] = response["generated_text"].replace(prompt_prefix, "").strip(" ")
+	original[i]["solution"] = response["generated_text"]
+	original[i]["llm_prompt"] = input["refined_prompt"]
 	# print(response, "\n")
-	
-responses_json = json.dumps(responses, indent=4)  # indent=4 for pretty formatting
+responses_json = json.dumps(original, indent=4)  
 
-with open(f"output_good.json", "w") as file:
-    file.write(responses_json)
+with open(f"codellama_output.json", "w") as file:
+	file.write(responses_json)
 
