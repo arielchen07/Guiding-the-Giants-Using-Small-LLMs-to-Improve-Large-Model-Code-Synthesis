@@ -34,11 +34,18 @@ prompt_prefix = "Complete the function, do not add a main method and do not retu
 for i in tqdm(range(len(inputs))):
 	input = inputs[i]
         
-	delim_substr = "\"\"\"\n"
+	delim_substrs = ["\"\"\"\n", "'''\n"]
 	filtered_refined_prompt = input["refined_prompt"]
-	delim_substr_index = filtered_refined_prompt.find(delim_substr)
+
+	last_delim_index = -1
+	for delim in delim_substrs:
+		index = filtered_refined_prompt.rfind(delim)
+		if index > last_delim_index:
+			last_delim_index = index
+
+	delim_substr_index = last_delim_index
 	if delim_substr_index != -1:
-		filtered_refined_prompt = filtered_refined_prompt[:delim_substr_index + len(delim_substr)]
+		filtered_refined_prompt = filtered_refined_prompt[:delim_substr_index + len(delim_substrs[0])]
 
 	payload = {"inputs": prompt_prefix + " " + filtered_refined_prompt}
 	# payload = {"inputs": prompt_prefix + " " + input["refined_prompt"]}
