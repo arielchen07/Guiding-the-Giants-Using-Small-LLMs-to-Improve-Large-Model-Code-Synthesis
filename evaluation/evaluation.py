@@ -156,8 +156,11 @@ def evaluate_all():
     correct_programs = 0  
     errored_programs = 0 
     wrong_output_programs = 0  
+    correct_solution_idx = []
+
     
-    for entry in tqdm(data):
+    for i in tqdm(range(len(data))):
+        entry = data[i]
         try:
             func_name = get_main_function_name(entry["llm_prompt_filtered"].strip(" "), entry["solution"])
             solution = entry["solution"]
@@ -176,6 +179,7 @@ def evaluate_all():
             
             if passed_tests == len(test_results) and len(test_results) != 0:
                 correct_programs += 1
+                correct_solution_idx.append(i)
             elif errored:  
                 errored_programs += 1
             else:  
@@ -191,6 +195,9 @@ def evaluate_all():
     summary["wrong_output_programs"] = wrong_output_programs 
     summary["total_programs"] = total_programs  
     summary["success_rate"] = success_rate
+    summary["correct_solutions"]=correct_solution_idx
+    # print(correct_solution_idx)
+
     
     return summary
 
@@ -201,4 +208,5 @@ if __name__ == "__main__":
     print("Total programs:", results["total_programs"])  
     print("Correct programs:", results["correct_programs"]) 
     print("Errored programs:", results["errored_programs"])  
-    print("Wrong output programs:", results["wrong_output_programs"])  
+    print("Wrong output programs:", results["wrong_output_programs"]) 
+    print("correct solution indexes", results["correct_solutions"]) 
