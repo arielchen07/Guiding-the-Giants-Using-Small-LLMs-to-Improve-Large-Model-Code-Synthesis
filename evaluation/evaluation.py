@@ -19,6 +19,7 @@ def timeout_handler(signum, frame):
     
 with open("codellama_output.json", "r") as f:
     data = json.load(f)
+
     
 OPERATORS = {
     "==": operator.eq,
@@ -34,7 +35,6 @@ def safe_eval(expr, is_binary: bool = False):
         return expr
 
     expr_stripped = expr.strip()
-
     if is_binary:
         if expr_stripped.lower().startswith('0b'):
             try:
@@ -92,7 +92,6 @@ def run_tests(solution_code: str, function_name: str, tests: List[Dict], prompt:
 
             signal.alarm(0)
             
-            result = func(*args)
             if isinstance(result, str) and isinstance(expected, int):
                 if is_binary:
                     result = int(result, 2)
@@ -127,6 +126,9 @@ def run_tests(solution_code: str, function_name: str, tests: List[Dict], prompt:
             #     print("funcname", function_name)
             #     print("result", result)
             #     print("expected", expected)
+            #     print("soln", solution_code)
+            #     print("paresed in", input_str)
+            #     print("paresed in", parsed_input)
             results.append(passed)
 
         except Exception as e:
@@ -164,11 +166,12 @@ def evaluate_all():
     
     for i in tqdm(range(len(data))):
         entry = data[i]
+        
         try:
             func_name = get_main_function_name(entry["llm_prompt_filtered"].strip(" "), entry["solution"])
             solution = entry["solution"].strip(" ")
             tests = ast.literal_eval(entry["tests"])
-
+        
             test_results, errored = run_tests(solution, func_name, tests, entry["llm_prompt_filtered"].strip(" "))
             passed_tests = sum(test_results)
             failed_tests = len(test_results) - passed_tests
@@ -179,6 +182,7 @@ def evaluate_all():
                 "failed": failed_tests,
                 "errored": errored 
             }
+           
             
             if passed_tests == len(test_results) and len(test_results) != 0:
                 correct_programs += 1
@@ -192,7 +196,7 @@ def evaluate_all():
             print(f"Error evaluating {entry.get('prompt', '')[:20]}...: {e}")
             errored_programs+=1
     total_programs = correct_programs + errored_programs + wrong_output_programs 
-    success_rate = correct_programs / (total_programs + 1)
+    success_rate = correct_programs / (total_programs)
     summary["correct_programs"] = correct_programs  
     summary["errored_programs"] = errored_programs  
     summary["wrong_output_programs"] = wrong_output_programs 
