@@ -139,16 +139,19 @@ def run_tests(solution_code: str, function_name: str, tests: List[Dict], prompt:
 
 def get_main_function_name(prompt: str, solution_code: str) -> str:
 
-    prompt_tree = ast.parse(prompt)
-    prompt_funcs = [n.name for n in ast.walk(prompt_tree) if isinstance(n, ast.FunctionDef)]
-
+   
     solution_tree = ast.parse(solution_code)
     solution_funcs = [n.name for n in ast.walk(solution_tree) if isinstance(n, ast.FunctionDef)]
 
     if len(solution_funcs) == 1:
         return solution_funcs[0]
     else:
-        return prompt_funcs[-1]
+        try:
+            prompt_tree = ast.parse(prompt)
+            prompt_funcs = [n.name for n in ast.walk(prompt_tree) if isinstance(n, ast.FunctionDef)]
+            return prompt_funcs[-1]
+        except Exception as e:
+            return solution_funcs[0]
 
 
 def evaluate_all():
@@ -163,7 +166,7 @@ def evaluate_all():
         entry = data[i]
         try:
             func_name = get_main_function_name(entry["llm_prompt_filtered"].strip(" "), entry["solution"])
-            solution = entry["solution"]
+            solution = entry["solution"].strip(" ")
             tests = ast.literal_eval(entry["tests"])
 
             test_results, errored = run_tests(solution, func_name, tests, entry["llm_prompt_filtered"].strip(" "))
