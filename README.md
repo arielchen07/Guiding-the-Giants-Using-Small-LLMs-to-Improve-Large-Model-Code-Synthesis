@@ -6,7 +6,7 @@ This repository contains the course project for CS224N.
 This project investigates whether a light-weight LLM can be fine-tuned to generate
 effective prompts that enhance code synthesis in a larger LLM. Previous studies
 suggest that Large Language Models (LLM) can achieve human-level prompt
-engineering capabilities[ 1], but might be expensive in terms of training. Building
+engineering capabilities, but might be expensive in terms of training. Building
 on this insight, we fine-tuned several small-scale LLMs to generate refined prompts,
 with data generated from a SELF-INSTRUCT-based approach. We validate the
 effectiveness of prompt tuning by evaluating the correctness of the code generated
