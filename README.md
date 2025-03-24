@@ -18,4 +18,22 @@ large LLM outputs cost-effectively via refined prompt generation
 ## Main Pipeline
 ![IMG_00001](https://github.com/user-attachments/assets/c72cd656-bed4-4167-aa29-177550bddfce)
 
+## Example Commands for Fine-Tuning LLaMA 3.2
+1. Fine-tune to obtain checkpoints
+```bash
+python3 finetune.py --config configs/llama_3b.yaml --data_path data/gpt4_generations/fixed_prompts.json
+```
+2. Run inference using the best checkpoint to generate output.json
+```bash
+python3 inference.py --config configs/llama_3b.yaml --data_path data/human_eval_data_ambiguity_with_soln_new.json
+```
+3. Generate code solutions from output.json
+```bash
+python3 inference_codellama.py
+```
+4. Evaluate the generated solutions
+```bash
+python3 evaluation.py
+```
+
 
