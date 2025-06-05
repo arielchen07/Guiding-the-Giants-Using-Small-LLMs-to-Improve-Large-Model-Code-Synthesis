@@ -36,4 +36,17 @@ python3 inference_codellama.py
 python3 evaluation.py
 ```
 
+## Citation
+
+If you use or build upon our workflow idea, methodology, or code, please cite:
+
+```bibtex
+@misc{guidingllms2025,
+  author       = {Sirui(Ariel) Chen and Kehan Li and Komei Ryu},
+  title        = {Guiding the Giants: Using Small LLMs to Improve Large Model Code Synthesis},
+  year         = {2025},
+  howpublished = {\url{https://github.com/arielchen07/Guiding-the-Giants-Using-Small-LLMs-to-Improve-Large-Model-Code-Synthesis}},
+  note         = {CS224N Course Project, Stanford University}
+}
+
 
